@@ -79,17 +79,18 @@ namespace cryptonote {
     return CRYPTONOTE_MAX_TX_SIZE;
   }
   //-----------------------------------------------------------------------------------------------
-  bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version) {
-    static_assert(DIFFICULTY_TARGET_V2%60==0&&DIFFICULTY_TARGET_V1%60==0,"difficulty targets must be a multiple of 60");
-    const int target = version < 2 ? DIFFICULTY_TARGET_V1 : DIFFICULTY_TARGET_V2;
-    const int target_minutes = target / 60;
-    const int emission_speed_factor = EMISSION_SPEED_FACTOR_PER_MINUTE - (target_minutes-1);
-
-    uint64_t base_reward = (MONEY_SUPPLY - already_generated_coins) >> emission_speed_factor;
-    if (base_reward < FINAL_SUBSIDY_PER_MINUTE*target_minutes)
-    {
-      base_reward = FINAL_SUBSIDY_PER_MINUTE*target_minutes;
-    }
+  bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version, difficulty_type difficulty) {
+    (void)already_generated_coins; // Galimi: the block reward is a function of the difficulty target, not of coins emitted so far
+    // Galimi tokenomics: base_reward = floor(log2(target)) * COIN, where target = (2^256 - 1) / difficulty.
+    // Computed with exact integer arithmetic (msb of the 256-bit target): deterministic on every node.
+    // Properties: perpetual (target >= 1 for any real difficulty, so the reward never reaches zero),
+    // and self-regulating (more hashrate -> higher difficulty -> lower target -> smaller reward).
+    if (difficulty == 0)
+      difficulty = 1;
+    const boost::multiprecision::cpp_int max_target = (boost::multiprecision::cpp_int(1) << 256) - 1;
+    const boost::multiprecision::cpp_int target = max_target / difficulty;
+    const unsigned int log2_target = boost::multiprecision::msb(target); // floor(log2(target)); 255 at difficulty 1
+    uint64_t base_reward = (uint64_t)log2_target * COIN;
 
     uint64_t full_reward_zone = get_min_block_weight(version);
 

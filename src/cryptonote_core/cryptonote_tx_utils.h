@@ -31,13 +31,14 @@
 #pragma once
 
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "cryptonote_basic/difficulty.h"
 #include "ringct/rctOps.h"
 #include "serialization/wire/fwd.h"
 
 namespace cryptonote
 {
   //---------------------------------------------------------------
-  bool construct_miner_tx(size_t height, size_t median_weight, uint64_t already_generated_coins, size_t current_block_weight, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1);
+  bool construct_miner_tx(size_t height, size_t median_weight, uint64_t already_generated_coins, size_t current_block_weight, uint64_t fee, const account_public_address &miner_address, transaction& tx, const blobdata& extra_nonce = blobdata(), size_t max_outs = 999, uint8_t hard_fork_version = 1, difficulty_type difficulty = difficulty_type(1));
 
   struct tx_source_entry
   {

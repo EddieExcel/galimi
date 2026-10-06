@@ -291,11 +291,7 @@ namespace nodetool
 
   private:
     const std::vector<std::string> m_seed_nodes_list =
-    { "seeds.moneroseeds.se"
-    , "seeds.moneroseeds.ae.org"
-    , "seeds.moneroseeds.ch"
-    , "seeds.moneroseeds.li"
-    };
+    { /* Galimi: no seed nodes yet — add peers manually with --add-peer */ };
 
     bool islimitup=false;
     bool islimitdown=false;
