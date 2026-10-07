@@ -135,6 +135,16 @@ bool HardFork::add(uint8_t block_version, uint8_t voting_version, uint64_t heigh
 {
   CRITICAL_REGION_LOCAL(lock);
 
+  // Galimi: the v1 genesis block (height 0) predates the chain's hardfork v16
+  // start, so it can never pass do_check. Record the current fork version for
+  // it instead of rejecting it; the genesis block itself is validated by the
+  // explicit exemption in handle_block_to_main_chain.
+  if (height == 0)
+  {
+    db.set_hard_fork_version(0, heights[current_fork_index].version);
+    return true;
+  }
+
   if (!do_check(block_version, voting_version))
     return false;
 
