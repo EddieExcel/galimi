@@ -31,6 +31,7 @@
 #include "checkpoints.h"
 
 #include "common/dns_utils.h"
+#include "cryptonote_config.h"
 #include "string_tools.h"
 #include "storages/portable_storage_template_helper.h" // epee json include
 #include "serialization/keyvalue_serialization.h"
@@ -195,6 +196,12 @@ namespace cryptonote
 
   bool checkpoints::init_default_checkpoints(network_type nettype)
   {
+    // Galimi: a new chain with its own genesis block (empty coinbase
+    // 013c01ff000000). Monero's hardcoded mainnet checkpoints do not exist on
+    // this chain, so no default checkpoints apply. Every Galimi node derives
+    // the same empty set, so this is consensus-safe.
+    if (nettype == MAINNET && config::GENESIS_TX == "013c01ff000000")
+      return true;
     if (nettype == TESTNET)
     {
       ADD_CHECKPOINT2(0,     "48ca7cd3c8de5b6a4d53d2861fbdaedca141553559f9be9520068053cda8430b", "0x1");
