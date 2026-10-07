@@ -4466,6 +4466,12 @@ uint64_t Blockchain::get_next_long_term_block_weight(uint64_t block_weight) cons
   if (hf_version < HF_VERSION_LONG_TERM_BLOCK_WEIGHT)
     return block_weight;
 
+  // Galimi: the chain starts at hardfork v16, so the genesis block reaches this
+  // path with an empty chain. With no history there is no median to take; the
+  // block's own weight stands.
+  if (nblocks == 0)
+    return block_weight;
+
   uint64_t long_term_median = get_long_term_block_weight_median(db_height - nblocks, nblocks);
   uint64_t long_term_effective_median_block_weight = std::max<uint64_t>(CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5, long_term_median);
 
