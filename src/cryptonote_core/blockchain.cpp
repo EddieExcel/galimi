@@ -3917,6 +3917,14 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
   uint64_t blockchain_height;
   const crypto::hash top_hash = get_tail_id(blockchain_height);
   ++blockchain_height; // block height to chain height
+  // Galimi: the hardcoded genesis block carries an empty coinbase (zero premine)
+  // and a v1 block header, while the chain starts at hardfork v16 with a
+  // log-target reward that a zero-output coinbase can never satisfy. It is
+  // exempt from the hardfork-version and miner-transaction checks below: its
+  // identity is fully determined by generate_genesis_block(), so every node
+  // derives the exact same genesis block and no consensus divergence is possible.
+  // The proof-of-work check still applies.
+  const bool is_genesis_block = (blockchain_height == 0);
   if(bl.prev_id != top_hash)
   {
     MERROR_VER("Block with id: " << id << std::endl << "has wrong prev_id: " << bl.prev_id << std::endl << "expected: " << top_hash);
@@ -3939,7 +3947,7 @@ leave:
 
   // this is a cheap test
   const uint8_t hf_version = get_current_hard_fork_version();
-  if (!m_hardfork->check(bl))
+  if (!is_genesis_block && !m_hardfork->check(bl))
   {
     MERROR_VER("Block with id: " << id << std::endl << "has old version: " << (unsigned)bl.major_version << std::endl << "current: " << (unsigned)hf_version);
     bvc.m_verifivation_failed = true;
@@ -4048,7 +4056,8 @@ leave:
   TIME_MEASURE_START(t3);
 
   // sanity check basic miner tx properties;
-  if(!prevalidate_miner_transaction(bl, blockchain_height, hf_version))
+  // (genesis block is exempt: its empty coinbase is defined by generate_genesis_block)
+  if(!is_genesis_block && !prevalidate_miner_transaction(bl, blockchain_height, hf_version))
   {
     MERROR_VER("Block with id: " << id << " failed to pass prevalidation");
     bvc.m_verifivation_failed = true;
@@ -4279,7 +4288,27 @@ leave:
   TIME_MEASURE_START(vmt);
   uint64_t base_reward = 0;
   uint64_t already_generated_coins = blockchain_height ? m_db->get_block_already_generated_coins(blockchain_height - 1) : 0;
-  if(!validate_miner_transaction(bl, cumulative_block_weight, fee_summary, base_reward, already_generated_coins, bvc.m_partial_block_reward, m_hardfork->get_current_version(), current_diffic))
+  if (is_genesis_block)
+  {
+    // Galimi genesis: the coinbase is intentionally empty (zero premine), so no
+    // coins are generated. Enforce the exact expected shape instead of the
+    // usual reward accounting, which an empty coinbase can never satisfy.
+    if (bl.miner_tx.vout.empty() && bl.miner_tx.vin.size() == 1
+        && bl.miner_tx.vin[0].type() == typeid(txin_gen)
+        && boost::get<txin_gen>(bl.miner_tx.vin[0]).height == 0)
+    {
+      base_reward = 0;
+      MINFO("Galimi genesis block accepted: empty coinbase, zero premine, 0 coins generated");
+    }
+    else
+    {
+      MERROR_VER("Block with id: " << id << " has an invalid Galimi genesis coinbase (must be an empty txin_gen coinbase: zero premine)");
+      bvc.m_verifivation_failed = true;
+      return_txs_to_pool();
+      return false;
+    }
+  }
+  else if(!validate_miner_transaction(bl, cumulative_block_weight, fee_summary, base_reward, already_generated_coins, bvc.m_partial_block_reward, m_hardfork->get_current_version(), current_diffic))
   {
     MERROR_VER("Block with id: " << id << " has incorrect miner transaction");
     bvc.m_verifivation_failed = true;
