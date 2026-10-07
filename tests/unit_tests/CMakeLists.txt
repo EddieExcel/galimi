@@ -54,6 +54,7 @@ set(unit_tests_sources
   epee_serialization.cpp
   epee_utils.cpp
   expect.cpp
+  galimi_tokenomics.cpp
   json_serialization.cpp
   get_xtype_from_string.cpp
   hashchain.cpp

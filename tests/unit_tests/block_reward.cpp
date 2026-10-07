@@ -48,30 +48,36 @@ namespace
   };
 
   #define TEST_ALREADY_GENERATED_COINS(already_generated_coins, expected_reward)                              \
-    m_block_not_too_big = get_block_reward(0, current_block_weight, already_generated_coins, m_block_reward,1); \
+    m_block_not_too_big = get_block_reward(0, current_block_weight, already_generated_coins, m_block_reward, 1, 1); \
     ASSERT_TRUE(m_block_not_too_big);                                                                         \
     ASSERT_EQ(m_block_reward, expected_reward);
 
   TEST_F(block_reward_and_already_generated_coins, handles_first_values)
   {
-  	// 17592186044415 from neozaru, confirmed by fluffypony
-    TEST_ALREADY_GENERATED_COINS(0, UINT64_C(17592186044415));
-    TEST_ALREADY_GENERATED_COINS(m_block_reward, UINT64_C(17592169267200));
-    TEST_ALREADY_GENERATED_COINS(UINT64_C(2756434948434199641), UINT64_C(14963444829249));
+    // Galimi: log-target reward is 255 GAL at difficulty 1, independent of coins emitted so far
+    TEST_ALREADY_GENERATED_COINS(0, UINT64_C(255) * COIN);
+    TEST_ALREADY_GENERATED_COINS(m_block_reward, UINT64_C(255) * COIN);
+    TEST_ALREADY_GENERATED_COINS(UINT64_C(2756434948434199641), UINT64_C(255) * COIN);
   }
 
-  TEST_F(block_reward_and_already_generated_coins, correctly_steps_from_2_to_1)
+  TEST_F(block_reward_and_already_generated_coins, reward_scales_with_difficulty)
   {
-    TEST_ALREADY_GENERATED_COINS(MONEY_SUPPLY - ((2 << 20) + 1), FINAL_SUBSIDY_PER_MINUTE);
-    TEST_ALREADY_GENERATED_COINS(MONEY_SUPPLY -  (2 << 20)     , FINAL_SUBSIDY_PER_MINUTE);
-    TEST_ALREADY_GENERATED_COINS(MONEY_SUPPLY - ((2 << 20) - 1), FINAL_SUBSIDY_PER_MINUTE);
+    // Galimi: higher difficulty -> smaller reward (self-regulating), never zero at realistic difficulty
+    uint64_t r1 = 0, r2 = 0;
+    ASSERT_TRUE(get_block_reward(0, current_block_weight, 0, r1, 1, 1));
+    ASSERT_TRUE(get_block_reward(0, current_block_weight, 0, r2, 1, 1000000));
+    ASSERT_EQ(r1, UINT64_C(255) * COIN);
+    ASSERT_LT(r2, r1);
+    ASSERT_GT(r2, 0);
   }
 
-  TEST_F(block_reward_and_already_generated_coins, handles_max)
+  TEST_F(block_reward_and_already_generated_coins, reward_deterministic)
   {
-    TEST_ALREADY_GENERATED_COINS(MONEY_SUPPLY - ((1 << 20) + 1), FINAL_SUBSIDY_PER_MINUTE);
-    TEST_ALREADY_GENERATED_COINS(MONEY_SUPPLY -  (1 << 20)     , FINAL_SUBSIDY_PER_MINUTE);
-    TEST_ALREADY_GENERATED_COINS(MONEY_SUPPLY - ((1 << 20) - 1), FINAL_SUBSIDY_PER_MINUTE);
+    // Same inputs must give the same reward on every node, every time
+    uint64_t r1 = 0, r2 = 0;
+    ASSERT_TRUE(get_block_reward(0, current_block_weight, 0, r1, 1, 123456789));
+    ASSERT_TRUE(get_block_reward(0, current_block_weight, 0, r2, 1, 123456789));
+    ASSERT_EQ(r1, r2);
   }
 
   //--------------------------------------------------------------------------------------------------------------------
@@ -80,14 +86,14 @@ namespace
   protected:
     virtual void SetUp()
     {
-      m_block_not_too_big = get_block_reward(0, 0, already_generated_coins, m_standard_block_reward, 1);
+      m_block_not_too_big = get_block_reward(0, 0, already_generated_coins, m_standard_block_reward, 1, 1);
       ASSERT_TRUE(m_block_not_too_big);
       ASSERT_LT(CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1, m_standard_block_reward);
     }
 
     void do_test(size_t median_block_weight, size_t current_block_weight)
     {
-      m_block_not_too_big = get_block_reward(median_block_weight, current_block_weight, already_generated_coins, m_block_reward, 1);
+      m_block_not_too_big = get_block_reward(median_block_weight, current_block_weight, already_generated_coins, m_block_reward, 1, 1);
     }
 
     static const uint64_t already_generated_coins = 0;
@@ -153,14 +159,14 @@ namespace
 
       m_last_block_weights_median = 7 * CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1;
 
-      m_block_not_too_big = get_block_reward(epee::misc_utils::median(m_last_block_weights), 0, already_generated_coins, m_standard_block_reward, 1);
+      m_block_not_too_big = get_block_reward(epee::misc_utils::median(m_last_block_weights), 0, already_generated_coins, m_standard_block_reward, 1, 1);
       ASSERT_TRUE(m_block_not_too_big);
       ASSERT_LT(CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1, m_standard_block_reward);
     }
 
     void do_test(size_t current_block_weight)
     {
-      m_block_not_too_big = get_block_reward(epee::misc_utils::median(m_last_block_weights), current_block_weight, already_generated_coins, m_block_reward, 1);
+      m_block_not_too_big = get_block_reward(epee::misc_utils::median(m_last_block_weights), current_block_weight, already_generated_coins, m_block_reward, 1, 1);
     }
 
     static const uint64_t already_generated_coins = 0;

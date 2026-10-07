@@ -1,0 +1,15 @@
+# Pending (user instruction 2026-10-06): when the Galimi build finishes and the
+# binaries are verified, push them to the Contabo VPS (62.169.18.182).
+#
+# Binaries to ship (from build/release/bin/):
+#   - monerod        (target "daemon")
+#   - monero-wallet-cli (target "simplewallet")
+# Destination on VPS: /root/galimi/bin/  (create if missing)
+# SSH: ssh -F /home/hatch/.ssh/config -o ProxyCommand="~/workspace/bin/vps-tunnel.py %h %p" contabo
+#
+# Verification before push:
+#   1. build/release/bin/monerod exists and is executable
+#   2. run: ./bin/monerod --version (should not crash at startup)
+#   3. confirm network rebrand present (data dir ~/.galimi, ports 28080/28081)
+# Do NOT start a public network or mine on the VPS — just stage the binaries.
+# Status: BUILD RUNNING (session proc_dc2da2ee78bf, make -j2 daemon simplewallet)
