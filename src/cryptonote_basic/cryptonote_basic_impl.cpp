@@ -79,6 +79,33 @@ namespace cryptonote {
     return CRYPTONOTE_MAX_TX_SIZE;
   }
   //-----------------------------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------------------------
+  // Galimi v17 emission curve, anchored at three points:
+  //   r = 255 (difficulty 1)            -> 255 GAL (maximum)
+  //   r = 216 (Monero-scale difficulty) -> 128 GAL
+  //   r = 0   (extreme difficulty)      ->   1 GAL (minimum)
+  // R(r) = floor(1 + 254 * (r/255)^4.17596), r = floor(log2(target)).
+  // Pure function of current difficulty: the reward falls when difficulty rises
+  // and rises again when difficulty falls (no ratchet, no memory).
+  // No floating point in consensus code: deterministic uint8 lookup table.
+static const uint8_t GALIMI_CURVE[256] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5,
+    5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8,
+    9, 9, 9, 10, 10, 10, 11, 11, 11, 12, 12, 13, 13, 13, 14, 14,
+    15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 21, 21, 22, 23, 23,
+    24, 25, 25, 26, 27, 27, 28, 29, 30, 31, 31, 32, 33, 34, 35, 36,
+    37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 50, 51, 52, 53,
+    54, 56, 57, 58, 60, 61, 63, 64, 66, 67, 69, 70, 72, 73, 75, 76,
+    78, 80, 82, 83, 85, 87, 89, 91, 93, 95, 97, 99, 101, 103, 105, 107,
+    109, 111, 113, 116, 118, 120, 123, 125, 128, 130, 132, 135, 138, 140, 143, 146,
+    148, 151, 154, 157, 160, 163, 166, 169, 172, 175, 178, 181, 184, 188, 191, 194,
+    198, 201, 205, 208, 212, 215, 219, 223, 227, 230, 234, 238, 242, 246, 250, 255,
+};
   bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version, difficulty_type difficulty) {
     (void)already_generated_coins; // Galimi: the block reward is a function of the difficulty target, not of coins emitted so far
     // Galimi tokenomics: base_reward = floor(log2(target)) * COIN, where target = (2^256 - 1) / difficulty.
@@ -90,7 +117,10 @@ namespace cryptonote {
     const boost::multiprecision::cpp_int max_target = (boost::multiprecision::cpp_int(1) << 256) - 1;
     const boost::multiprecision::cpp_int target = max_target / difficulty;
     const unsigned int log2_target = boost::multiprecision::msb(target); // floor(log2(target)); 255 at difficulty 1
-    uint64_t base_reward = (uint64_t)log2_target * COIN;
+    unsigned int reward_units = log2_target;
+    if (version >= 17) // Galimi v17 (hardfork at height 100): anchored emission curve
+      reward_units = GALIMI_CURVE[reward_units];
+    uint64_t base_reward = (uint64_t)reward_units * COIN;
 
     uint64_t full_reward_zone = get_min_block_weight(version);
 

@@ -19,13 +19,42 @@ using namespace cryptonote;
 namespace
 {
 
-static uint64_t galimi_reward(difficulty_type difficulty)
+static uint64_t galimi_reward(difficulty_type difficulty, uint8_t version = 16)
 {
   uint64_t reward = 0;
   // median/current block weight under the full-reward zone: no penalty scaling
-  const bool ok = get_block_reward(0, 1, 0, reward, 16, difficulty);
+  const bool ok = get_block_reward(0, 1, 0, reward, version, difficulty);
   EXPECT_TRUE(ok);
   return reward;
+}
+
+TEST(galimi_curve_v17, anchors)
+{
+  // r = 255 (difficulty 1, minimal) -> maximum 255 GAL
+  ASSERT_EQ(galimi_reward(1, 17), UINT64_C(255) * COIN);
+  // r = 216 (Monero-scale difficulty ~7.4e11) -> 128 GAL
+  ASSERT_EQ(galimi_reward(743448672675ULL, 17), UINT64_C(128) * COIN);
+  ASSERT_EQ(galimi_reward(difficulty_type(1) << 39, 17), UINT64_C(128) * COIN);
+  // r = 168 -> 45 GAL (well below the old pivot, still positive)
+  ASSERT_EQ(galimi_reward(difficulty_type(1) << 87, 17), UINT64_C(45) * COIN);
+  // deep difficulty -> small but nonzero
+  ASSERT_EQ(galimi_reward(difficulty_type(1) << 120, 17), UINT64_C(18) * COIN);
+}
+
+TEST(galimi_curve_v17, legacy_v16_unchanged)
+{
+  // Pre-fork blocks keep the raw log2 reward.
+  ASSERT_EQ(galimi_reward(difficulty_type(1) << 87, 16), UINT64_C(168) * COIN);
+  ASSERT_EQ(galimi_reward(1, 16), UINT64_C(255) * COIN);
+}
+
+TEST(galimi_curve_v17, moves_with_difficulty)
+{
+  // Reward falls when difficulty rises, rises again when difficulty falls.
+  const uint64_t low = galimi_reward(1000, 17);
+  const uint64_t high = galimi_reward(difficulty_type(1) << 87, 17);
+  ASSERT_GT(low, high);
+  ASSERT_EQ(galimi_reward(1000, 17), low); // deterministic
 }
 
 TEST(galimi_tokenomics, difficulty_one_yields_255_gal)
