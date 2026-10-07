@@ -33,8 +33,9 @@
 
 const hardfork_t mainnet_hard_forks[] = {
   // Galimi: the v1 genesis block lives at height 0 (its header predates the
-  // v16 start); the chain enforces v16 from block 1 on (no voting)
-  { 1, 0, 0, 1791306600 },
+  // v16 start); the chain enforces v16 from block 1 on (no voting).
+  // NOTE: times must be strictly increasing or add_fork() drops the entry.
+  { 1, 0, 0, 1791306500 },
   { 16, 1, 0, 1791306600 },
 };
 const size_t num_mainnet_hard_forks = sizeof(mainnet_hard_forks) / sizeof(mainnet_hard_forks[0]);
