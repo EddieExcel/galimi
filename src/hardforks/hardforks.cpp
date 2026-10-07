@@ -32,7 +32,9 @@
 #define MONERO_DEFAULT_LOG_CATEGORY "blockchain.hardforks"
 
 const hardfork_t mainnet_hard_forks[] = {
-  // Galimi: a new chain - start at the latest block version from block 1 (no voting)
+  // Galimi: the v1 genesis block lives at height 0 (its header predates the
+  // v16 start); the chain enforces v16 from block 1 on (no voting)
+  { 1, 0, 0, 1791306600 },
   { 16, 1, 0, 1791306600 },
 };
 const size_t num_mainnet_hard_forks = sizeof(mainnet_hard_forks) / sizeof(mainnet_hard_forks[0]);
