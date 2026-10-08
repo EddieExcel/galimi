@@ -2319,8 +2319,8 @@ void wallet2::scan_output(const cryptonote::transaction &tx, bool miner_tx, cons
     if (!m_encrypt_keys_after_refresh && !m_processing_background_cache)
     {
       boost::optional<epee::wipeable_string> pwd = m_callback->on_get_password(pool ? "output found in pool" : "output received");
-      THROW_WALLET_EXCEPTION_IF(!pwd, error::password_needed, tr("Password is needed to compute key image for incoming monero"));
-      THROW_WALLET_EXCEPTION_IF(!verify_password(*pwd), error::password_needed, tr("Invalid password: password is needed to compute key image for incoming monero"));
+      THROW_WALLET_EXCEPTION_IF(!pwd, error::password_needed, tr("Password is needed to compute key image for incoming galimi"));
+      THROW_WALLET_EXCEPTION_IF(!verify_password(*pwd), error::password_needed, tr("Invalid password: password is needed to compute key image for incoming galimi"));
       m_encrypt_keys_after_refresh.reset(new wallet_keys_unlocker(*this, &*pwd));
     }
   }
@@ -15347,7 +15347,7 @@ std::string wallet2::make_uri(const std::string &address, const std::string &pay
     return std::string();
   }
 
-  std::string uri = "monero:" + address;
+  std::string uri = "galimi:" + address;
   unsigned int n_fields = 0;
 
   if (!payment_id.empty())
@@ -15396,13 +15396,17 @@ bool wallet2::parse_uri(const std::string &uri,
 //----------------------------------------------------------------------------------------------------
 bool wallet2::parse_uri_impl(const std::string &uri, const cryptonote::network_type nettype, std::string &address, std::string &payment_id, uint64_t &amount, std::string &tx_description, std::string &recipient_name, std::vector<std::string> &unknown_parameters, std::string &error)
 {
-  if (uri.substr(0, 7) != "monero:")
+  // Galimi rebrand: accept legacy "monero:" URIs, normalize to "galimi:"
+  std::string scheme_uri = uri;
+  if (scheme_uri.substr(0, 7) == "monero:")
+    scheme_uri = "galimi:" + scheme_uri.substr(7);
+  if (scheme_uri.substr(0, 7) != "galimi:")
   {
-    error = std::string("URI has wrong scheme (expected \"monero:\"): ") + uri;
+    error = std::string("URI has wrong scheme (expected \"galimi:\"): ") + uri;
     return false;
   }
 
-  std::string remainder = uri.substr(7);
+  std::string remainder = scheme_uri.substr(7);
   const char *ptr = strchr(remainder.c_str(), '?');
   address = ptr ? remainder.substr(0, ptr-remainder.c_str()) : remainder;
 
